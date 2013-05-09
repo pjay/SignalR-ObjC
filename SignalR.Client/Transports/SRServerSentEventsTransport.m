@@ -95,6 +95,10 @@ static NSString * const kTransportName = @"serverSentEvents";
     return @"serverSentEvents";
 }
 
+- (BOOL)supportsKeepAlive {
+    return YES;
+}
+
 - (void)negotiate:(id <SRConnectionInterface>)connection completionHandler:(void (^)(SRNegotiationResponse *response))block {
     [super negotiate:connection completionHandler:block];
 }
@@ -219,8 +223,8 @@ static NSString * const kTransportName = @"serverSentEvents";
     [super send:connection data:data completionHandler:block];
 }
 
-- (void)abort:(id <SRConnectionInterface>)connection {
-    [super abort:connection];
+- (void)abort:(id <SRConnectionInterface>)connection timeout:(NSNumber *)timeout{
+    [super abort:connection timeout:timeout];
 }
 
 @end

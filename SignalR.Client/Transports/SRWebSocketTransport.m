@@ -54,6 +54,10 @@ typedef void (^SRWebSocketStartBlock)(id response);
     return @"webSockets";
 }
 
+- (BOOL)supportsKeepAlive {
+    return YES;
+}
+
 - (void)negotiate:(id <SRConnectionInterface>)connection completionHandler:(void (^)(SRNegotiationResponse *response))block {
     [super negotiate:connection completionHandler:block];
 }

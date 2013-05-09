@@ -63,6 +63,11 @@
     return self.transport.name;
 }
 
+- (BOOL)supportsKeepAlive {
+    if (self.transport == nil) return NO;
+    return self.transport.supportsKeepAlive;
+}
+
 - (void)negotiate:(id <SRConnectionInterface>)connection completionHandler:(void (^)(SRNegotiationResponse *response))block {
     __weak __typeof(&*self)weakSelf = self;
     [super negotiate:connection completionHandler:^(SRNegotiationResponse *response) {
@@ -127,9 +132,14 @@
     [self.transport send:connection data:data completionHandler:block];
 }
 
-- (void)abort:(id <SRConnectionInterface>)connection {
+- (void)abort:(id <SRConnectionInterface>)connection timeout:(NSNumber *)timeout {
     SRLogAutoTransport(@"will stop transport");
-    [self.transport abort:connection];
+    [self.transport abort:connection timeout:timeout];
+}
+
+- (void)lostConnection:(id<SRConnectionInterface>)connection {
+    SRLogAutoTransport(@"lost connection");
+    [self.transport lostConnection:connection];
 }
 
 @end

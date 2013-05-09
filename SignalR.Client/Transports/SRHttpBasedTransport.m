@@ -21,6 +21,7 @@
 //
 
 #import "AFJSONRequestOperation.h"
+#import "SRConnectionInterface.h"
 #import "SRHttpBasedTransport.h"
 #import "SRLog.h"
 #import "SRNegotiationResponse.h"
@@ -47,13 +48,24 @@
     return @"";
 }
 
+- (BOOL)supportsKeepAlive {
+    //TODO: Throw 
+    return NO;
+}
+
 - (void)negotiate:(id <SRConnectionInterface>)connection completionHandler:(void (^)(SRNegotiationResponse *response))block {
+    if (connection == nil) {
+        //TODO: throw here
+    }
     NSString *negotiateUrl = [connection.url stringByAppendingString:@"negotiate"];
     negotiateUrl = [negotiateUrl stringByAppendingString:[self appendBaseUrl:negotiateUrl withConnectionQueryString:connection]];
     
     NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:negotiateUrl]];
     [urlRequest setHTTPMethod:@"GET"];
     [urlRequest setTimeoutInterval:30];
+    
+    [connection prepareRequest:urlRequest];
+    
     AFJSONRequestOperation *operation = [[AFJSONRequestOperation alloc] initWithRequest:urlRequest];
     [operation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
         if(block) {
@@ -95,7 +107,8 @@
     [urlRequest setValue:[NSString stringWithFormat:@"%ld", (unsigned long)[requestData length]] forHTTPHeaderField:@"Content-Length"];
     [urlRequest setHTTPBody: requestData];
     
-    //TODO: prepare request
+    [connection prepareRequest:urlRequest];
+    
     AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:urlRequest];
     [operation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
         if (operation.responseString == nil) {
@@ -115,7 +128,8 @@
     [operation start];
 }
 
-- (void)abort:(id <SRConnectionInterface>)connection {
+#warning TODO: HANDLE TIMEOUT
+- (void)abort:(id <SRConnectionInterface>)connection timeout:(NSNumber *)timeout {
     if (connection == nil) {
         //TODO: throw here
     }
@@ -129,13 +143,18 @@
     [urlRequest setValue:@"application/json" forHTTPHeaderField:@"Accept"];
     [urlRequest setTimeoutInterval:2];
     
-    //TODO: prepare request
+    [connection prepareRequest:urlRequest];
+    
     AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:urlRequest];
     [operation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         SRLogHTTPTransport(@"Clean disconnect failed. %@",error);
     }];
     [operation start];
+}
+
+- (void)lostConnection:(id<SRConnectionInterface>)connection {
+    //TODO: Throw, Subclass should implement this.
 }
 
 - (NSString *)sendQueryString:(id <SRConnectionInterface>)connection {
@@ -220,6 +239,9 @@
     if (connection == nil) {
         //TODO: throw here
     }
+    
+#warning TODO: Update LAST KEEP ALIVE HERE
+    //[connection updateLastKeepAlive];
     
     *timedOut = NO;
     *disconnected = NO;
