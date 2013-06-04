@@ -27,6 +27,7 @@
 #import "SRNegotiationResponse.h"
 #import "SRVersion.h"
 #import "SRKeepAliveData.h"
+#import "SRHeartbeatMonitor.h"
 
 #import "NSObject+SRJSON.h"
 
@@ -43,6 +44,7 @@ void (^prepareRequest)(id);
 @property (strong, nonatomic, readwrite) NSString *url;
 @property (strong, nonatomic, readwrite) NSMutableDictionary *items;
 @property (strong, nonatomic, readwrite) NSString *queryString;
+@property (strong, nonatomic, readwrite) SRHeartbeatMonitor *monitor;
 
 - (void)negotiate:(id <SRClientTransportInterface>)transport;
 - (void)verifyProtocolVersion:(NSString *)versionString;
@@ -126,7 +128,7 @@ void (^prepareRequest)(id);
         return;
     }
     
-    //TODO: Set HeartBeatMonitor
+    _monitor = [[SRHeartbeatMonitor alloc] initWithConnection:self];
     _transport = transport;
     
     [self negotiate:transport];
@@ -166,8 +168,7 @@ void (^prepareRequest)(id);
         [strongSelf changeState:connecting toState:connected];
         
         if (_keepAliveData != nil) {
-            //TODO: Start the monitor to check for server activity
-            //_monitor.Start();
+            [_monitor start];
         }
         
         if(strongSelf.started != nil) {
@@ -219,8 +220,14 @@ void (^prepareRequest)(id);
     
     // Do nothing if the connection is offline
     if (self.state != disconnected) {
+        
+        [_monitor stop];
+        _monitor = nil;
+        
         [_transport abort:self timeout:timeout];
         [self disconnect];
+        
+        _transport = nil;
     }
 }
 
@@ -231,8 +238,8 @@ void (^prepareRequest)(id);
         
         _state = disconnected;
         
-        //TODO: dispose of _monitor
-        //_monitor.Dispose();
+        [_monitor stop];
+        _monitor = nil;
         
         // Clear the state for this connection
         _connectionId = nil;

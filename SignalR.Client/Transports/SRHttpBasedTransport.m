@@ -240,8 +240,7 @@
         //TODO: throw here
     }
     
-#warning TODO: Update LAST KEEP ALIVE HERE
-    //[connection updateLastKeepAlive];
+    [connection updateLastKeepAlive];
     
     *timedOut = NO;
     *disconnected = NO;
