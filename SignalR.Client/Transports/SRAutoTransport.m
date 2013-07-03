@@ -41,7 +41,7 @@
 @implementation SRAutoTransport
 
 - (instancetype)init {
-    NSArray *transports = @[/*[[SRWebSocketTransport alloc] init],*/
+    NSArray *transports = @[[[SRWebSocketTransport alloc] init],
                             [[SRServerSentEventsTransport alloc] init],
                             [[SRLongPollingTransport alloc] init]];
     return [self initWithTransports:transports];
@@ -132,14 +132,14 @@
     [self.transport send:connection data:data completionHandler:block];
 }
 
-- (void)abort:(id <SRConnectionInterface>)connection timeout:(NSNumber *)timeout {
-    SRLogAutoTransport(@"will stop transport");
-    [self.transport abort:connection timeout:timeout];
-}
-
 - (void)lostConnection:(id<SRConnectionInterface>)connection {
     SRLogAutoTransport(@"lost connection");
     [self.transport lostConnection:connection];
+}
+
+- (void)abort:(id <SRConnectionInterface>)connection timeout:(NSNumber *)timeout {
+    SRLogAutoTransport(@"will stop transport");
+    [self.transport abort:connection timeout:timeout];
 }
 
 @end

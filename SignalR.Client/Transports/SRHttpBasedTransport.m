@@ -30,6 +30,8 @@
 
 @interface SRHttpBasedTransport()
 
+@property (assign, nonatomic, readwrite) BOOL startedAbort;
+
 @end
 
 @implementation SRHttpBasedTransport
@@ -115,12 +117,15 @@
             return;
         }
         
+#warning TODO: this should be a json object instead...
         [connection didReceiveData:operation.responseString];
         
         if(block) {
             block([operation.responseString SRJSONValue]);
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        [connection didReceiveError:error];
+        
         if (block) {
             block(error);
         }
@@ -128,33 +133,54 @@
     [operation start];
 }
 
+- (void)completeAbort {
+    // Make any future calls to Abort() no-op
+    // Abort might still run, but any ongoing aborts will immediately complete
+    _startedAbort = YES;
+}
+
+- (BOOL)tryCompleteAbort {
+    if (_startedAbort) {
+        return YES;
+    } else {
+        return NO;
+    }
+}
+
+- (void)lostConnection:(id<SRConnectionInterface>)connection {
+    //TODO: Throw, Subclass should implement this.
+}
+
 #warning TODO: HANDLE TIMEOUT
 - (void)abort:(id <SRConnectionInterface>)connection timeout:(NSNumber *)timeout {
     if (connection == nil) {
         //TODO: throw here
     }
-    SRLogHTTPTransport(@"will stop transport");
     
-    NSString *url = [connection.url stringByAppendingString:@"abort"];
-    url = [url stringByAppendingString:[self sendQueryString:connection]];
-    
-    NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url]];
-    [urlRequest setHTTPMethod:@"POST"];
-    [urlRequest setValue:@"application/json" forHTTPHeaderField:@"Accept"];
-    [urlRequest setTimeoutInterval:2];
-    
-    [connection prepareRequest:urlRequest];
-    
-    AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:urlRequest];
-    [operation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
-    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        SRLogHTTPTransport(@"Clean disconnect failed. %@",error);
-    }];
-    [operation start];
-}
-
-- (void)lostConnection:(id<SRConnectionInterface>)connection {
-    //TODO: Throw, Subclass should implement this.
+    // Ensure that an abort request is only made once
+    if (!_startedAbort)
+    {
+        SRLogHTTPTransport(@"will stop transport");
+        _startedAbort = YES;
+        
+        NSString *url = [connection.url stringByAppendingString:@"abort"];
+        url = [url stringByAppendingString:[self sendQueryString:connection]];
+        
+        NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url]];
+        [urlRequest setHTTPMethod:@"POST"];
+        [urlRequest setValue:@"application/json" forHTTPHeaderField:@"Accept"];
+        //[urlRequest setTimeoutInterval:2];
+        
+        [connection prepareRequest:urlRequest];
+        
+        AFHTTPRequestOperation *operation = [[AFHTTPRequestOperation alloc] initWithRequest:urlRequest];
+        [operation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
+        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+            SRLogHTTPTransport(@"Clean disconnect failed. %@",error);
+            [self completeAbort];
+        }];
+        [operation start];
+    }
 }
 
 - (NSString *)sendQueryString:(id <SRConnectionInterface>)connection {

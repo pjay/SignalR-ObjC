@@ -31,7 +31,7 @@
 - (instancetype)initWithTimeout:(NSNumber *)timeout {
     if (self = [super init]) {
         _timeout = timeout;
-        _timeoutWarning = [NSNumber numberWithInteger:([_timeout integerValue] * 2.0 / 3.0)];
+        _timeoutWarning = [NSNumber numberWithInteger:([_timeout integerValue] * (2.0 / 3.0))];
         _checkInterval = [NSNumber numberWithInteger:(([_timeout integerValue] - [_timeoutWarning integerValue]) / 3)];
     }
     return self;
