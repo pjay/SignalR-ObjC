@@ -27,6 +27,7 @@
 @property (assign, nonatomic, readwrite) int offset;
 @property (strong, nonatomic, readwrite) NSMutableString *buffer;
 @property (strong, nonatomic, readwrite) NSMutableString *lineBuilder;
+@property (strong, nonatomic, readwrite) NSMutableData *accumulatedChunks;
 
 @end
 
@@ -45,7 +46,21 @@
 }
 
 - (void)add:(NSData *)buffer length:(NSInteger)length {
-    [_buffer appendString:[[NSString alloc] initWithData:buffer encoding:NSUTF8StringEncoding]];
+	NSData *data = buffer;
+	
+	if (self.accumulatedChunks) {
+		[self.accumulatedChunks appendData:buffer];
+		data = self.accumulatedChunks;
+	}
+	
+	// Parsing a string from the data may fail if the end of the data is in the middle of a multibyte UTF-8 character
+	NSString *appendedString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+	if (appendedString) {
+		[_buffer appendString:appendedString];
+		self.accumulatedChunks = nil;
+	} else if (!self.accumulatedChunks) {
+		self.accumulatedChunks = [data mutableCopy];
+	}
 }
 
 - (NSString *)readLine {
