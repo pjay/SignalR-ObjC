@@ -10,5 +10,8 @@ Pod::Spec.new do |s|
   s.osx.deployment_target = '10.7'
   s.source_files = 'SignalR.Client/**/*.{h,m}'
   s.requires_arc = true
-  s.dependency 'AFNetworking', '>=1.0.0'
+
+  s.dependency 'AFNetworking', '1.3.2'
+  s.dependency 'AnyJSON', '~> 0.0.1'
+  s.dependency 'SocketRocket', '0.3.1-beta2'
 end
