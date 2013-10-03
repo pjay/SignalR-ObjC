@@ -63,7 +63,6 @@ typedef enum {
 
 - (void)start {
     _stream.delegate = self;
-    [_stream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
 }
 
 - (BOOL)processing {
@@ -75,43 +74,37 @@ typedef enum {
 }
 
 - (void)stream:(NSStream *)stream handleEvent:(NSStreamEvent)eventCode {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        switch (eventCode) {
-            case NSStreamEventOpenCompleted: {
-                SRLogServerSentEvents(@"Opened");
-                
-                _reading = processing;
-                [self onOpened];
-            } case NSStreamEventHasSpaceAvailable: {
-                if (![self processing]) {
-                    return;
-                }
-                
-                NSData *buffer = [stream propertyForKey:NSStreamDataWrittenToMemoryStreamKey];
-                if ([buffer length] >= 4096) {
-                    [self close];
-                    return;
-                }
-                buffer = [buffer subdataWithRange:NSMakeRange(_offset, [buffer length] - _offset)];
-                
-                NSInteger read = [buffer length];
-                if(read > 0) {
-                    // Put chunks in the buffer
-                    _offset = _offset + read;
-                    [self processBuffer:buffer read:read];
-                }
-                break;
-            } case NSStreamEventErrorOccurred: {
-                [self onClosed:[stream streamError]];
-                break;
+    switch (eventCode) {
+        case NSStreamEventOpenCompleted: {
+            SRLogServerSentEvents(@"Opened");
+            
+            _reading = processing;
+            [self onOpened];
+        } case NSStreamEventHasSpaceAvailable: {
+            if (![self processing]) {
+                return;
             }
-            case NSStreamEventEndEncountered:
-            case NSStreamEventNone:
-            case NSStreamEventHasBytesAvailable:
-            default:
-                break;
+            
+            NSData *buffer = [stream propertyForKey:NSStreamDataWrittenToMemoryStreamKey];
+            buffer = [buffer subdataWithRange:NSMakeRange(_offset, [buffer length] - _offset)];
+            
+            NSInteger read = [buffer length];
+            if(read > 0) {
+                // Put chunks in the buffer
+                _offset = _offset + read;
+                [self processBuffer:buffer read:read];
+            }
+            break;
+        } case NSStreamEventErrorOccurred: {
+            [self onClosed:[stream streamError]];
+            break;
         }
-    });
+        case NSStreamEventEndEncountered:
+        case NSStreamEventNone:
+        case NSStreamEventHasBytesAvailable:
+        default:
+            break;
+    }
 }
 
 - (void)processBuffer:(NSData *)buffer read:(NSInteger)read {
@@ -141,18 +134,21 @@ typedef enum {
 
 - (void)onOpened {
     if(self.opened) {
-        self.opened();
+		dispatch_async(dispatch_get_main_queue(), ^{
+			self.opened();
+		});
     }
 }
 
 - (void)onMessage:(SRSseEvent *)sseEvent {
     if(self.message) {
-        self.message(sseEvent);
+		dispatch_async(dispatch_get_main_queue(), ^{
+			self.message(sseEvent);
+		});
     }
 }
 
 - (void)onClosed:(NSError *)error; {
-    
     SREventSourceStreamReaderState previousState = _reading;
     _reading = stopped;
     
@@ -160,11 +156,12 @@ typedef enum {
         SRLogServerSentEvents(@"Closed");
 
         if(self.closed) {
-            self.closed(error);
+			dispatch_async(dispatch_get_main_queue(), ^{
+				self.closed(error);
+			});
         }
         
         _stream.delegate = nil;
-        [_stream close];
     }
 }
 
